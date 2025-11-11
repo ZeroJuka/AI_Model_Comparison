@@ -1,0 +1,53 @@
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Tool caches
+.cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Build artifacts (none expected, but safe to ignore)
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+
+# App state (optional)
+# Uncomment to keep runtime state local-only
+# config.json
+
+# Datasets (sensitive/large)
+data/*
+!data/.gitkeep
+
+# Example datasets (often large and not needed in repo)
+example datasets/*
+!example datasets/.gitkeep
+
+# Model training artifacts (generated)
+models/preprocess_*.pkl
+models/trained_sklearn_*.pkl
+models/trained_keras_*.weights.h5
+models/history_*.json
+
+# Keep architecture definitions and directory markers tracked
+!models/architecture_*.json
+!models/.gitkeep

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+  <h2>Train Models</h2>
+  <form method="post" class="form">
+    <div class="form-group">
+      <label for="dataset_id">Dataset</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="dataset_id" name="dataset_id" required>
+          {% for ds in datasets %}
+            <option value="{{ ds.id }}">{{ ds.name }} ({{ ds.features|length }} features)</option>
+          {% endfor %}
+        </select>
+        <a class="link-btn" href="{{ url_for('upload_dataset') }}"><i data-feather="upload"></i> Upload</a>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="model_ids">Models (select one or more)</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="model_ids" name="model_ids" multiple size="8" required>
+          {% for m in models %}
+            <option value="{{ m.id }}">{{ m.name }} ({{ m.type }})</option>
+          {% endfor %}
+        </select>
+        <a class="link-btn" href="{{ url_for('register_model') }}"><i data-feather="cpu"></i> Register</a>
+      </div>
+    </div>
+    <button type="submit">Train</button>
+  </form>
+  <p class="hint">StandardScaler and 80/20 split are applied automatically.</p>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const sel = document.getElementById('dataset_id');
+      if (!sel) return;
+      sel.addEventListener('change', () => {
+        const ds = sel.value;
+        if (ds) {
+          window.location.href = '{{ url_for('results') }}' + '?dataset_id=' + encodeURIComponent(ds);
+        }
+      });
+    });
+  </script>
+</section>
+{% endblock %}

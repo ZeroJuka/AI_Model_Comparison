@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+  <h2>Welcome</h2>
+  <p>Manage datasets, register models, train and compare, then predict.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Datasets</h3>
+      {% if datasets %}
+        <ul>
+          {% for ds in datasets %}
+            <li>{{ ds.name }} — {{ ds.features|length }} features, target: {{ ds.target }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No datasets yet. <a href="{{ url_for('upload_dataset') }}">Upload one</a>.</p>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h3>Models</h3>
+      {% if models %}
+        <ul>
+          {% for m in models %}
+            <li>{{ m.name }} ({{ m.type }})</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No models registered. <a href="{{ url_for('register_model') }}">Register one</a>.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

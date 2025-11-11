@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+  <h2>Results</h2>
+  <form method="get" class="form-inline">
+    <label for="dataset_id">Dataset</label>
+    <select id="dataset_id" name="dataset_id">
+      <option value="">All</option>
+      {% for ds in datasets %}
+        <option value="{{ ds.id }}" {% if dataset_id == ds.id %}selected{% endif %}>{{ ds.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">View</button>
+  </form>
+
+  {% if dataset_id %}
+  <div class="card">
+    <h3>Model Comparison</h3>
+    <canvas id="metricsChart" height="120"></canvas>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const res = await fetch(`{{ url_for('api_metrics', dataset_id=dataset_id) }}`);
+      const data = await res.json();
+      const labels = data.metrics.map(m => m.model_name);
+      const f1 = data.metrics.map(m => m.f1);
+      const acc = data.metrics.map(m => m.accuracy);
+      const ctx = document.getElementById('metricsChart');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'F1-Score', data: f1, backgroundColor: 'rgba(54, 162, 235, 0.6)' },
+            { label: 'Accuracy', data: acc, backgroundColor: 'rgba(255, 99, 132, 0.6)' },
+          ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true, max: 1 } } }
+      });
+    });
+  </script>
+  {% endif %}
+
+  <div class="grid">
+    {% for item in results %}
+      {% if item.training.history_path %}
+        <div class="card">
+          <h3>{{ item.model.name }} — Loss vs Epochs</h3>
+          <canvas id="lossChart_{{ item.training.id }}" height="120"></canvas>
+          <script>
+            (async () => {
+              const res = await fetch(`{{ url_for('api_history', training_id=item.training.id) }}`);
+              const data = await res.json();
+              const labels = Array.from({length: data.loss.length}, (_, i) => i + 1);
+              const ctx = document.getElementById('lossChart_{{ item.training.id }}');
+              new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels,
+                  datasets: [
+                    { label: 'Loss', data: data.loss, borderColor: '#36a2eb', fill: false },
+                    { label: 'Val Loss', data: data.val_loss, borderColor: '#ff6384', fill: false },
+                  ]
+                },
+                options: { responsive: true }
+              });
+            })();
+          </script>
+        </div>
+      {% endif %}
+      <div class="card">
+        <h3>{{ item.model.name }} — Confusion Matrix</h3>
+        {% set cm = item.training.metrics.confusion %}
+        <table style="width:100%; text-align:center; border-collapse:collapse">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Pred -1</th>
+              <th>Pred +1</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>True -1</td>
+              <td>{{ cm.tn }}</td>
+              <td>{{ cm.fp }}</td>
+            </tr>
+            <tr>
+              <td>True +1</td>
+              <td>{{ cm.fn }}</td>
+              <td>{{ cm.tp }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

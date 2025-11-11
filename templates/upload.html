@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+  <h2>Upload Dataset</h2>
+  <form method="post" enctype="multipart/form-data" class="form">
+    <div class="grid two">
+      <div>
+        <label for="dataset_file">Select .csv, .xls, or .xlsx file</label>
+        <input type="file" id="dataset_file" name="dataset_file" accept=".csv,.xls,.xlsx" required>
+      </div>
+      <div>
+        <label for="dataset_name">Dataset Name (optional)</label>
+        <input type="text" id="dataset_name" name="dataset_name" placeholder="e.g., Customer Churn - v1">
+      </div>
+    </div>
+    <button type="submit">Upload</button>
+  </form>
+  <p class="hint">After upload, you'll map columns for features and target.</p>
+</section>
+
+<section>
+  <h2>Your Datasets</h2>
+  {% if datasets %}
+  <div class="grid">
+    {% for ds in datasets %}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>{{ ds.name }}{% if row_counts and row_counts.get(ds.id) %} — Rows: {{ row_counts.get(ds.id) }}{% endif %}</strong>
+        <form method="post" action="{{ url_for('delete_dataset', dataset_id=ds.id) }}" onsubmit="return confirm('Delete this dataset?');">
+          <button type="submit" class="secondary">Delete</button>
+        </form>
+      </div>
+      <div class="hint">Features: {{ ds.features|length }} • Target: {{ ds.target }} • Created: {{ ds.created_at }}</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <form method="post" action="{{ url_for('rename_dataset', dataset_id=ds.id) }}" style="display:flex; gap:6px;">
+          <input type="text" name="new_name" placeholder="Rename dataset" value="{{ ds.name }}">
+          <button type="submit">Rename</button>
+        </form>
+        <a class="link-btn" href="{{ url_for('map_columns_existing', dataset_id=ds.id) }}"><i data-feather="sliders"></i> Remap Columns</a>
+        {% if view and view.id == ds.id %}
+          <a class="link-btn" href="{{ url_for('upload_dataset') }}"><i data-feather="eye-off"></i> Hide</a>
+        {% else %}
+          <a class="link-btn" href="{{ url_for('upload_dataset', view_id=ds.id) }}"><i data-feather="eye"></i> View</a>
+        {% endif %}
+      </div>
+      {% if view and view.id == ds.id %}
+        <div style="overflow:auto; margin-top:8px;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                {% for c in view.columns %}<th style="border-bottom:1px solid #e2e8f0; text-align:left;">{{ c }}</th>{% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in view.rows %}
+              <tr>
+                {% for c in view.columns %}<td style="border-bottom:1px solid #f1f5f9;">{{ row[c] }}</td>{% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="hint">No datasets yet. Upload above to get started.</p>
+  {% endif %}
+</section>
+{% endblock %}

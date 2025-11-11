@@ -1,0 +1,17 @@
+{
+  "type": "Sequential",
+  "layers": [
+    {
+      "Dense": {
+        "units": 10,
+        "activation": "relu"
+      }
+    },
+    {
+      "Dense": {
+        "units": 1,
+        "activation": "sigmoid"
+      }
+    }
+  ]
+}

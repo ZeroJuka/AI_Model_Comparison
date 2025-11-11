@@ -1,0 +1,484 @@
+{
+  "datasets": [
+    {
+      "id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "name": "Teste",
+      "path": "data/dataset_076a4a89-2309-4515-8394-821f5e89b43b.csv",
+      "features": [
+        "x1",
+        "x2",
+        "x3"
+      ],
+      "target": "d",
+      "label_map": {
+        "-1": -1,
+        "1": 1
+      },
+      "created_at": "2025-11-11T13:19:27.548248"
+    },
+    {
+      "id": "13135012-14d2-4a4b-9aac-10f085b349cc",
+      "name": "Teste 3",
+      "path": "data/dataset_13135012-14d2-4a4b-9aac-10f085b349cc.csv",
+      "features": [
+        "x1",
+        "x2",
+        "x3"
+      ],
+      "target": "d",
+      "label_map": {
+        "-1": -1,
+        "1": 1
+      },
+      "row_count": 1000,
+      "created_at": "2025-11-11T14:16:06.029425"
+    },
+    {
+      "id": "e2337332-fa86-4f66-a703-c3a059e91ea8",
+      "name": "Dados Oleo",
+      "path": "data/dataset_e2337332-fa86-4f66-a703-c3a059e91ea8.csv",
+      "features": [
+        "x1",
+        "x\u00ad2",
+        "x3"
+      ],
+      "target": "d",
+      "label_map": {
+        "-1": -1,
+        "1": 1
+      },
+      "row_count": 30,
+      "created_at": "2025-11-11T14:17:27.965826"
+    }
+  ],
+  "models": [
+    {
+      "id": "2418efe9-eeb8-43e9-88c5-87806294e146",
+      "name": "KNN example",
+      "type": "knn",
+      "created_at": "2025-11-11T14:04:30.485130",
+      "hyperparams": {
+        "n_neighbors": 5
+      }
+    },
+    {
+      "id": "80f83ec7-2194-4311-b568-cbef3c11216e",
+      "name": "Perceptron Teste",
+      "type": "keras_mlp",
+      "created_at": "2025-11-11T14:04:47.297544",
+      "hyperparams": {
+        "optimizer": "RMSprop",
+        "loss": "binary_crossentropy",
+        "epochs": 100,
+        "batch_size": 32,
+        "architecture_path": "models/architecture_80f83ec7-2194-4311-b568-cbef3c11216e.json"
+      }
+    },
+    {
+      "id": "5a0bd947-50e7-4d44-b845-2ce35a66a16a",
+      "name": "Regress\u00e3o Log\u00edstica Teste",
+      "type": "logistic_regression",
+      "created_at": "2025-11-11T14:05:21.378126",
+      "hyperparams": {
+        "C": 1.0,
+        "solver": "liblinear",
+        "max_iter": 100
+      }
+    },
+    {
+      "id": "06190066-2c99-48d3-92b7-0e4bf79faf9e",
+      "name": "Random Forest Test",
+      "type": "random_forest",
+      "created_at": "2025-11-11T14:14:41.079189",
+      "hyperparams": {
+        "n_estimators": 100,
+        "max_depth": null
+      }
+    },
+    {
+      "id": "d7073e16-a490-4eb2-9f05-f9d3f0b2f60e",
+      "name": "SVM Test",
+      "type": "svm",
+      "created_at": "2025-11-11T14:14:48.775061",
+      "hyperparams": {
+        "C": 1.0,
+        "kernel": "rbf"
+      }
+    },
+    {
+      "id": "32bfe52f-17b8-4174-8db0-ab638caac66e",
+      "name": "NB Test",
+      "type": "naive_bayes",
+      "created_at": "2025-11-11T14:15:00.432703",
+      "hyperparams": {}
+    }
+  ],
+  "trainings": [
+    {
+      "id": "2d785f7e-9f18-48ee-b406-714411fe8b36",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "2418efe9-eeb8-43e9-88c5-87806294e146",
+      "metrics": {
+        "accuracy": 0.495,
+        "accuracy_percent": 49.5,
+        "precision_macro": 0.49491404740107825,
+        "recall_macro": 0.495,
+        "f1": 0.4928573221862369,
+        "f1_macro": 0.4928573221862369,
+        "precision_per_class": {
+          "-1": 0.49557522123893805,
+          "1": 0.4942528735632184
+        },
+        "recall_per_class": {
+          "-1": 0.56,
+          "1": 0.43
+        },
+        "f1_per_class": {
+          "-1": 0.5258215962441315,
+          "1": 0.45989304812834225
+        },
+        "confusion": {
+          "tn": 56,
+          "fp": 44,
+          "fn": 57,
+          "tp": 43
+        }
+      },
+      "trained_path": "models/trained_sklearn_2d785f7e-9f18-48ee-b406-714411fe8b36.pkl",
+      "preprocess_path": "models/preprocess_2d785f7e-9f18-48ee-b406-714411fe8b36.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:14:01.969187"
+    },
+    {
+      "id": "c4cee3da-5773-4b63-a8e4-2c2871771b1f",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "5a0bd947-50e7-4d44-b845-2ce35a66a16a",
+      "metrics": {
+        "accuracy": 0.505,
+        "accuracy_percent": 50.5,
+        "precision_macro": 0.5050005000500051,
+        "recall_macro": 0.505,
+        "f1": 0.5049876246906173,
+        "f1_macro": 0.5049876246906173,
+        "precision_per_class": {
+          "-1": 0.5050505050505051,
+          "1": 0.504950495049505
+        },
+        "recall_per_class": {
+          "-1": 0.5,
+          "1": 0.51
+        },
+        "f1_per_class": {
+          "-1": 0.5025125628140703,
+          "1": 0.5074626865671642
+        },
+        "confusion": {
+          "tn": 50,
+          "fp": 50,
+          "fn": 49,
+          "tp": 51
+        }
+      },
+      "trained_path": "models/trained_sklearn_c4cee3da-5773-4b63-a8e4-2c2871771b1f.pkl",
+      "preprocess_path": "models/preprocess_c4cee3da-5773-4b63-a8e4-2c2871771b1f.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:14:06.980593"
+    },
+    {
+      "id": "6ce804f3-1db6-483c-aca5-570264a28899",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "2418efe9-eeb8-43e9-88c5-87806294e146",
+      "metrics": {
+        "accuracy": 0.495,
+        "accuracy_percent": 49.5,
+        "precision_macro": 0.49491404740107825,
+        "recall_macro": 0.495,
+        "f1": 0.4928573221862369,
+        "f1_macro": 0.4928573221862369,
+        "precision_per_class": {
+          "-1": 0.49557522123893805,
+          "1": 0.4942528735632184
+        },
+        "recall_per_class": {
+          "-1": 0.56,
+          "1": 0.43
+        },
+        "f1_per_class": {
+          "-1": 0.5258215962441315,
+          "1": 0.45989304812834225
+        },
+        "confusion": {
+          "tn": 56,
+          "fp": 44,
+          "fn": 57,
+          "tp": 43
+        }
+      },
+      "trained_path": "models/trained_sklearn_6ce804f3-1db6-483c-aca5-570264a28899.pkl",
+      "preprocess_path": "models/preprocess_6ce804f3-1db6-483c-aca5-570264a28899.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:15:12.944203"
+    },
+    {
+      "id": "2cf1fb6b-0364-40e1-872a-945eb89706cd",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "5a0bd947-50e7-4d44-b845-2ce35a66a16a",
+      "metrics": {
+        "accuracy": 0.505,
+        "accuracy_percent": 50.5,
+        "precision_macro": 0.5050005000500051,
+        "recall_macro": 0.505,
+        "f1": 0.5049876246906173,
+        "f1_macro": 0.5049876246906173,
+        "precision_per_class": {
+          "-1": 0.5050505050505051,
+          "1": 0.504950495049505
+        },
+        "recall_per_class": {
+          "-1": 0.5,
+          "1": 0.51
+        },
+        "f1_per_class": {
+          "-1": 0.5025125628140703,
+          "1": 0.5074626865671642
+        },
+        "confusion": {
+          "tn": 50,
+          "fp": 50,
+          "fn": 49,
+          "tp": 51
+        }
+      },
+      "trained_path": "models/trained_sklearn_2cf1fb6b-0364-40e1-872a-945eb89706cd.pkl",
+      "preprocess_path": "models/preprocess_2cf1fb6b-0364-40e1-872a-945eb89706cd.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:15:12.964251"
+    },
+    {
+      "id": "3b506f14-e3ba-47ac-b3f6-5bf6506de180",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "06190066-2c99-48d3-92b7-0e4bf79faf9e",
+      "metrics": {
+        "accuracy": 0.505,
+        "accuracy_percent": 50.5,
+        "precision_macro": 0.5051872600892209,
+        "recall_macro": 0.505,
+        "f1": 0.5004919397563006,
+        "f1_macro": 0.5004919397563006,
+        "precision_per_class": {
+          "-1": 0.5042016806722689,
+          "1": 0.5061728395061729
+        },
+        "recall_per_class": {
+          "-1": 0.6,
+          "1": 0.41
+        },
+        "f1_per_class": {
+          "-1": 0.547945205479452,
+          "1": 0.4530386740331492
+        },
+        "confusion": {
+          "tn": 60,
+          "fp": 40,
+          "fn": 59,
+          "tp": 41
+        }
+      },
+      "trained_path": "models/trained_sklearn_3b506f14-e3ba-47ac-b3f6-5bf6506de180.pkl",
+      "preprocess_path": "models/preprocess_3b506f14-e3ba-47ac-b3f6-5bf6506de180.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:15:13.125385"
+    },
+    {
+      "id": "3f07dbb6-9cf5-4d76-a274-e6ceca3a492a",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "d7073e16-a490-4eb2-9f05-f9d3f0b2f60e",
+      "metrics": {
+        "accuracy": 0.495,
+        "accuracy_percent": 49.5,
+        "precision_macro": 0.4949753793588584,
+        "recall_macro": 0.495,
+        "f1": 0.49438061625491225,
+        "f1_macro": 0.49438061625491225,
+        "precision_per_class": {
+          "-1": 0.4953271028037383,
+          "1": 0.4946236559139785
+        },
+        "recall_per_class": {
+          "-1": 0.53,
+          "1": 0.46
+        },
+        "f1_per_class": {
+          "-1": 0.5120772946859904,
+          "1": 0.47668393782383417
+        },
+        "confusion": {
+          "tn": 53,
+          "fp": 47,
+          "fn": 54,
+          "tp": 46
+        }
+      },
+      "trained_path": "models/trained_sklearn_3f07dbb6-9cf5-4d76-a274-e6ceca3a492a.pkl",
+      "preprocess_path": "models/preprocess_3f07dbb6-9cf5-4d76-a274-e6ceca3a492a.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:15:13.189809"
+    },
+    {
+      "id": "808a848f-0422-4e6a-bd56-8822dd30dc4d",
+      "dataset_id": "076a4a89-2309-4515-8394-821f5e89b43b",
+      "model_id": "32bfe52f-17b8-4174-8db0-ab638caac66e",
+      "metrics": {
+        "accuracy": 0.51,
+        "accuracy_percent": 51.0,
+        "precision_macro": 0.5100160256410255,
+        "recall_macro": 0.51,
+        "f1": 0.5098039215686274,
+        "f1_macro": 0.5098039215686274,
+        "precision_per_class": {
+          "-1": 0.5096153846153846,
+          "1": 0.5104166666666666
+        },
+        "recall_per_class": {
+          "-1": 0.53,
+          "1": 0.49
+        },
+        "f1_per_class": {
+          "-1": 0.5196078431372549,
+          "1": 0.5
+        },
+        "confusion": {
+          "tn": 53,
+          "fp": 47,
+          "fn": 51,
+          "tp": 49
+        }
+      },
+      "trained_path": "models/trained_sklearn_808a848f-0422-4e6a-bd56-8822dd30dc4d.pkl",
+      "preprocess_path": "models/preprocess_808a848f-0422-4e6a-bd56-8822dd30dc4d.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:15:13.206008"
+    },
+    {
+      "id": "f87c0459-d03a-4468-a10c-576c09a8cbc4",
+      "dataset_id": "e2337332-fa86-4f66-a703-c3a059e91ea8",
+      "model_id": "2418efe9-eeb8-43e9-88c5-87806294e146",
+      "metrics": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_percent": 66.66666666666666,
+        "precision_macro": 0.6666666666666666,
+        "recall_macro": 0.6666666666666666,
+        "f1": 0.6666666666666666,
+        "f1_macro": 0.6666666666666666,
+        "precision_per_class": {
+          "-1": 0.6666666666666666,
+          "1": 0.6666666666666666
+        },
+        "recall_per_class": {
+          "-1": 0.6666666666666666,
+          "1": 0.6666666666666666
+        },
+        "f1_per_class": {
+          "-1": 0.6666666666666666,
+          "1": 0.6666666666666666
+        },
+        "confusion": {
+          "tn": 2,
+          "fp": 1,
+          "fn": 1,
+          "tp": 2
+        }
+      },
+      "trained_path": "models/trained_sklearn_f87c0459-d03a-4468-a10c-576c09a8cbc4.pkl",
+      "preprocess_path": "models/preprocess_f87c0459-d03a-4468-a10c-576c09a8cbc4.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:17:35.952746"
+    },
+    {
+      "id": "0ecf8f85-f0d0-4904-9d42-3327322673dd",
+      "dataset_id": "e2337332-fa86-4f66-a703-c3a059e91ea8",
+      "model_id": "5a0bd947-50e7-4d44-b845-2ce35a66a16a",
+      "metrics": {
+        "accuracy": 0.8333333333333334,
+        "accuracy_percent": 83.33333333333334,
+        "precision_macro": 0.875,
+        "recall_macro": 0.8333333333333333,
+        "f1": 0.8285714285714285,
+        "f1_macro": 0.8285714285714285,
+        "precision_per_class": {
+          "-1": 0.75,
+          "1": 1.0
+        },
+        "recall_per_class": {
+          "-1": 1.0,
+          "1": 0.6666666666666666
+        },
+        "f1_per_class": {
+          "-1": 0.8571428571428571,
+          "1": 0.8
+        },
+        "confusion": {
+          "tn": 3,
+          "fp": 0,
+          "fn": 1,
+          "tp": 2
+        }
+      },
+      "trained_path": "models/trained_sklearn_0ecf8f85-f0d0-4904-9d42-3327322673dd.pkl",
+      "preprocess_path": "models/preprocess_0ecf8f85-f0d0-4904-9d42-3327322673dd.pkl",
+      "history_path": null,
+      "params": {},
+      "created_at": "2025-11-11T14:22:04.911992"
+    },
+    {
+      "id": "bbd580d2-fcdc-4a49-bf11-b8e3d6440443",
+      "dataset_id": "e2337332-fa86-4f66-a703-c3a059e91ea8",
+      "model_id": "80f83ec7-2194-4311-b568-cbef3c11216e",
+      "metrics": {
+        "accuracy": 0.5,
+        "accuracy_percent": 50.0,
+        "precision_macro": 0.25,
+        "recall_macro": 0.5,
+        "f1": 0.3333333333333333,
+        "f1_macro": 0.3333333333333333,
+        "precision_per_class": {
+          "-1": 0.0,
+          "1": 0.5
+        },
+        "recall_per_class": {
+          "-1": 0.0,
+          "1": 1.0
+        },
+        "f1_per_class": {
+          "-1": 0.0,
+          "1": 0.6666666666666666
+        },
+        "confusion": {
+          "tn": 0,
+          "fp": 3,
+          "fn": 0,
+          "tp": 3
+        }
+      },
+      "trained_path": "models/trained_keras_bbd580d2-fcdc-4a49-bf11-b8e3d6440443.weights.h5",
+      "preprocess_path": "models/preprocess_bbd580d2-fcdc-4a49-bf11-b8e3d6440443.pkl",
+      "history_path": "models/history_bbd580d2-fcdc-4a49-bf11-b8e3d6440443.json",
+      "params": {
+        "optimizer": "RMSprop",
+        "loss": "binary_crossentropy",
+        "epochs": 100,
+        "batch_size": 32,
+        "hidden_units": 10
+      },
+      "created_at": "2025-11-11T14:23:14.823166"
+    }
+  ]
+}

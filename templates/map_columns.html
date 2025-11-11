@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+  <h2>Map Columns</h2>
+  <form method="post" class="form">
+    {% if request.args.dataset_name %}
+      <input type="hidden" name="dataset_name" value="{{ request.args.dataset_name }}" />
+    {% endif %}
+    <div class="form-group">
+      <label for="features">Select feature columns (choose one or more)</label>
+      <select id="features" name="features" multiple size="6" required>
+        {% for c in columns %}
+          <option value="{{ c }}" {% if c in suggested_features %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="target">Select target column</label>
+      <select id="target" name="target" required>
+        {% for c in columns %}
+          <option value="{{ c }}" {% if c == suggested_target %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+      {% if sample_target_values %}
+        <p class="hint">Sample target values: {{ sample_target_values }}</p>
+      {% endif %}
+    </div>
+    <button type="submit">Save Dataset</button>
+  </form>
+</section>
+{% endblock %}

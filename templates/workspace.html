@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="grid">
+  <div class="card">
+    <h2>Train Models</h2>
+    <form method="post" action="{{ url_for('workspace') }}" class="form" id="trainForm">
+      <div class="form-group">
+        <label for="dataset_id">Dataset</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="dataset_id" name="dataset_id" required>
+            {% for ds in datasets %}
+              <option value="{{ ds.id }}" {% if selected_dataset_id == ds.id %}selected{% endif %}>{{ ds.name }} ({{ ds.features|length }} features)</option>
+            {% endfor %}
+          </select>
+          <a class="link-btn" href="{{ url_for('upload_dataset') }}"><i data-feather="upload"></i> Upload</a>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="model_ids">Models (select one or more)</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select id="model_ids" name="model_ids" multiple size="8" required>
+            {% for m in models %}
+              <option value="{{ m.id }}">{{ m.name }} ({{ m.type }})</option>
+            {% endfor %}
+          </select>
+          <a class="link-btn" href="{{ url_for('register_model') }}"><i data-feather="cpu"></i> Register</a>
+        </div>
+      </div>
+
+      <!-- Training parameters removed: configure perceptron in Register Model; non-perceptron ignore epochs/optimizer/loss -->
+
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button type="button" id="startTrainingBtn">Train</button>
+        <button type="button" id="stopTrainingBtn" class="secondary" disabled>Stop</button>
+        <span id="trainingState" class="hint"></span>
+      </div>
+      <div class="progress" id="trainProgress" style="margin-top:8px;">
+        <div class="bar" id="trainProgressBar" style="width:0%"></div>
+      </div>
+      <div id="trainMessages" class="hint" style="margin-top:6px;"></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Comparison</h2>
+    {% if selected_dataset_id %}
+      <canvas id="metricsChart" height="120"></canvas>
+      <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+          const res = await fetch(`{{ url_for('api_metrics', dataset_id=selected_dataset_id) }}`);
+          const data = await res.json();
+          const labels = data.metrics.map(m => m.model_name);
+          const f1 = data.metrics.map(m => m.f1);
+          const acc = data.metrics.map(m => m.accuracy);
+          const ctx = document.getElementById('metricsChart');
+          new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [
+              { label: 'F1-Score', data: f1, backgroundColor: 'rgba(37,99,235,0.6)' },
+              { label: 'Accuracy', data: acc, backgroundColor: 'rgba(99,102,241,0.6)' },
+            ] },
+            options: { responsive: true, scales: { y: { beginAtZero: true, max: 1 } } }
+          });
+        });
+      </script>
+    {% else %}
+      <p class="hint">Select a dataset to view comparison.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid">
+  {% for item in results %}
+    <div class="card">
+      <h3>{{ item.model.name }} — Confusion Matrix</h3>
+      {% set metrics = item.training.metrics %}
+      {% set cm = metrics.get('confusion', {'tn':0,'fp':0,'fn':0,'tp':0}) %}
+      {% set total = (cm['tp'] + cm['tn'] + cm['fp'] + cm['fn']) %}
+      <div class="cm-grid" aria-label="Confusion matrix">
+        <div class="cm-cell" style="background-color: rgba(99,102,241, {{ (cm['tn'] / total)|float if total > 0 else 0.1 }});">
+          TN: {{ cm['tn'] }}
+        </div>
+        <div class="cm-cell" style="background-color: rgba(239,68,68, {{ (cm['fp'] / total)|float if total > 0 else 0.1 }});">
+          FP: {{ cm['fp'] }}
+        </div>
+        <div class="cm-cell" style="background-color: rgba(239,68,68, {{ (cm['fn'] / total)|float if total > 0 else 0.1 }});">
+          FN: {{ cm['fn'] }}
+        </div>
+        <div class="cm-cell" style="background-color: rgba(37,99,235, {{ (cm['tp'] / total)|float if total > 0 else 0.1 }});">
+          TP: {{ cm['tp'] }}
+        </div>
+      </div>
+      <form method="post" action="{{ url_for('training_delete', training_id=item.training.id) }}" style="margin-top:8px;">
+        {% if selected_dataset_id %}<input type="hidden" name="dataset_id" value="{{ selected_dataset_id }}" />{% endif %}
+        <button type="submit" class="secondary" onclick="return confirm('Delete this training and its files?')">Delete Training</button>
+      </form>
+      <div class="grid two" style="margin-top:12px;">
+        <div>
+          <p class="hint">Macro averages</p>
+          {% set acc_pct = metrics.get('accuracy_percent', (metrics.get('accuracy', 0) * 100)) %}
+          <ul>
+            <li>Accuracy: {{ '%.2f' % acc_pct }}%</li>
+            <li>Precision (macro): {{ '%.3f' % (metrics.get('precision_macro', metrics.get('precision', 0))) }}</li>
+            <li>Recall (macro): {{ '%.3f' % (metrics.get('recall_macro', metrics.get('recall', 0))) }}</li>
+            <li>F1-Score (macro): {{ '%.3f' % (metrics.get('f1_macro', metrics.get('f1', 0))) }}</li>
+          </ul>
+        </div>
+        <div>
+          {% if item.training.params %}
+            <p class="hint">Parameters</p>
+            <ul>
+              <li>Optimizer: {{ item.training.params.get('optimizer', '-') }}</li>
+              <li>Loss: {{ item.training.params.get('loss', '-') }}</li>
+              <li>Epochs: {{ item.training.params.get('epochs', '-') }}</li>
+              <li>Batch Size: {{ item.training.params.get('batch_size', '-') }}</li>
+              <li>Hidden Units: {{ item.training.params.get('hidden_units', '-') }}</li>
+            </ul>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% if item.training.history_path %}
+      <div class="card">
+        <h3>{{ item.model.name }} — Loss vs Epochs</h3>
+        <canvas id="lossChart_{{ item.training.id }}" height="120"></canvas>
+        <script>
+          (async () => {
+            const res = await fetch(`{{ url_for('api_history', training_id=item.training.id) }}`);
+            const data = await res.json();
+            const labels = Array.from({length: data.loss.length}, (_, i) => i + 1);
+            const ctx = document.getElementById('lossChart_{{ item.training.id }}');
+            new Chart(ctx, { type: 'line', data: {
+              labels,
+              datasets: [
+                { label: 'Loss', data: data.loss, borderColor: '#2563eb', fill: false },
+                { label: 'Val Loss', data: data.val_loss, borderColor: '#9333ea', fill: false },
+              ]
+            }, options: { responsive: true } });
+          })();
+        </script>
+      </div>
+    {% endif %}
+  {% endfor %}
+</section>
+
+<section class="card">
+  <h2>Predict</h2>
+  <form method="get" class="form-inline" action="{{ url_for('workspace') }}">
+    <label for="predict_model_id">Select Trained Model</label>
+    <select id="predict_model_id" name="predict_model_id">
+      <option value="">Choose...</option>
+      {% for m in models %}
+        <option value="{{ m.id }}" {% if selected_model_id == m.id %}selected{% endif %}>{{ m.name }} ({{ m.type }})</option>
+      {% endfor %}
+    </select>
+    {% if selected_dataset_id %}<input type="hidden" name="dataset_id" value="{{ selected_dataset_id }}" />{% endif %}
+    <button type="submit">Load</button>
+  </form>
+
+  {% if feature_columns and selected_model_id %}
+  <form method="post" class="form" action="{{ url_for('workspace') }}">
+    <input type="hidden" name="predict_model_id" value="{{ selected_model_id }}" />
+    {% if selected_dataset_id %}<input type="hidden" name="dataset_id" value="{{ selected_dataset_id }}" />{% endif %}
+    <div class="grid three">
+      {% for col in feature_columns %}
+        <div>
+          <label for="feature_{{ col }}">{{ col }}</label>
+          <input type="number" step="any" id="feature_{{ col }}" name="feature_{{ col }}" required>
+        </div>
+      {% endfor %}
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button type="submit" name="action" value="predict">Predict</button>
+      {% if predicted_value is defined and predicted_value is not none %}
+        <span class="hint">Predicted: {{ predicted_value }}</span>
+      {% endif %}
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

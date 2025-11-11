@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Model Comparison</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <script>
+    window.__FIRST_START__ = {
+      /*noDatasets: {{ (datasets|length == 0)|tojson if datasets is defined else false|tojson }}, ))*/
+      /*noModels: {{ (models|length == 0)|tojson if models is defined else false|tojson }}))*/
+    };
+  </script>
+  <style>html,body{height:100%}</style>
+  </head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><i data-feather="layers"></i> AI Model Comparison</div>
+    <nav>
+      <a href="{{ url_for('workspace') }}"><i data-feather="grid"></i> Workspace</a>
+      <a href="{{ url_for('upload_dataset') }}"><i data-feather="upload"></i> Upload Data</a>
+      <a href="{{ url_for('register_model') }}"><i data-feather="cpu"></i> Register Model</a>
+    </nav>
+    <div class="muted">&copy; {{ current_year }}</div>
+  </aside>
+
+  <div class="main">
+    <div class="container">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">
+            {% for msg in messages %}
+              <div class="flash-item">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+      <footer class="app-footer">AI Model Comparison</footer>
+    </div>
+  </div>
+
+  <!-- First Start Modal -->
+  <div class="modal-overlay" id="firstStartModal">
+    <div class="modal">
+      <h3>Welcome — Set up your first Dataset and Model</h3>
+      <p class="hint">Start by uploading a dataset and registering a model.</p>
+      <div class="actions">
+        <a class="link-btn" href="{{ url_for('upload_dataset') }}"><i data-feather="upload"></i> Upload Dataset</a>
+        <a class="link-btn" href="{{ url_for('register_model') }}"><i data-feather="cpu"></i> Register Model</a>
+        <button class="secondary" id="dismissStart">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

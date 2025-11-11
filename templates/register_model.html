@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block content %}
+<section>
+
+  <div class="card">
+      <h3>{% if editing_model %}Edit Model{% else %}New Model{% endif %}</h3>
+      <form method="post" class="form" id="register-form">
+        {% if editing_model %}
+          <input type="hidden" name="model_id" value="{{ editing_model.id }}" />
+        {% endif %}
+    <div class="form-group">
+      <label for="model_name">Model Name</label>
+      <input type="text" id="model_name" name="model_name" placeholder="e.g., My MLP" required value="{{ editing_model.name if editing_model else '' }}">
+    </div>
+    <div class="form-group">
+      <label for="model_type">Model Type</label>
+      <select id="model_type" name="model_type" required>
+        <option value="keras_mlp" {% if editing_model and editing_model.type == 'keras_mlp' %}selected{% endif %}>Keras MLP (Perceptron/Shallow)</option>
+        <option value="logistic_regression" {% if editing_model and editing_model.type == 'logistic_regression' %}selected{% endif %}>Logistic Regression</option>
+        <option value="svm" {% if editing_model and editing_model.type == 'svm' %}selected{% endif %}>SVM (RBF)</option>
+        <option value="random_forest" {% if editing_model and editing_model.type == 'random_forest' %}selected{% endif %}>Random Forest</option>
+        <option value="knn" {% if editing_model and editing_model.type == 'knn' %}selected{% endif %}>KNN</option>
+        <option value="naive_bayes" {% if editing_model and editing_model.type == 'naive_bayes' %}selected{% endif %}>Naive Bayes</option>
+      </select>
+    </div>
+
+    <div id="keras-params" class="form-subsection">
+      <h3>Keras Hyperparameters</h3>
+      <div class="grid two">
+        <div>
+          <label for="hidden_units">Hidden Units</label>
+          <input type="number" id="hidden_units" name="hidden_units" value="8" min="1">
+        </div>
+        <div>
+          <label for="optimizer">Optimizer</label>
+          <select id="optimizer" name="optimizer">
+            {% set opt = editing_model.hyperparams.get('optimizer') if editing_model and editing_model.hyperparams else 'Adam' %}
+            <option value="Adam" {% if opt == 'Adam' %}selected{% endif %}>Adam</option>
+            <option value="SGD" {% if opt == 'SGD' %}selected{% endif %}>SGD</option>
+            <option value="RMSprop" {% if opt == 'RMSprop' %}selected{% endif %}>RMSprop</option>
+            <option value="Adagrad" {% if opt == 'Adagrad' %}selected{% endif %}>Adagrad</option>
+          </select>
+        </div>
+        <div>
+          <label for="loss">Loss Function</label>
+          <select id="loss" name="loss">
+            {% set lf = editing_model.hyperparams.get('loss') if editing_model and editing_model.hyperparams else 'binary_crossentropy' %}
+            <option value="binary_crossentropy" {% if lf == 'binary_crossentropy' %}selected{% endif %}>binary_crossentropy</option>
+            <option value="mse" {% if lf == 'mse' %}selected{% endif %}>mse</option>
+            <option value="mae" {% if lf == 'mae' %}selected{% endif %}>mae</option>
+          </select>
+        </div>
+        <div>
+          <label for="epochs">Epochs</label>
+          <input type="number" id="epochs" name="epochs" value="{{ editing_model.hyperparams.get('epochs') if editing_model and editing_model.hyperparams else 100 }}" min="1">
+        </div>
+        <div>
+          <label for="batch_size">Batch Size</label>
+          <input type="number" id="batch_size" name="batch_size" value="{{ editing_model.hyperparams.get('batch_size') if editing_model and editing_model.hyperparams else 32 }}" min="1">
+        </div>
+      </div>
+    </div>
+
+    <div id="logreg-params" class="form-subsection hidden">
+      <h3>Logistic Regression</h3>
+      <div class="grid two">
+        <div>
+          <label for="C">C</label>
+          <input type="number" id="C" name="C" value="{{ editing_model.hyperparams.get('C') if editing_model and editing_model.hyperparams else 1.0 }}" step="0.1">
+        </div>
+        <div>
+          <label for="solver">Solver</label>
+          <input type="text" id="solver" name="solver" value="{{ editing_model.hyperparams.get('solver') if editing_model and editing_model.hyperparams else 'liblinear' }}">
+        </div>
+        <div>
+          <label for="max_iter">Max Iter</label>
+          <input type="number" id="max_iter" name="max_iter" value="{{ editing_model.hyperparams.get('max_iter') if editing_model and editing_model.hyperparams else 100 }}">
+        </div>
+      </div>
+    </div>
+
+    <div id="svm-params" class="form-subsection hidden">
+      <h3>SVM</h3>
+      <div class="grid two">
+        <div>
+          <label for="svm_C">C</label>
+          <input type="number" id="svm_C" name="C" value="{{ editing_model.hyperparams.get('C') if editing_model and editing_model.hyperparams else 1.0 }}" step="0.1">
+        </div>
+        <div>
+          <label for="kernel">Kernel</label>
+          <input type="text" id="kernel" name="kernel" value="{{ editing_model.hyperparams.get('kernel') if editing_model and editing_model.hyperparams else 'rbf' }}">
+        </div>
+      </div>
+    </div>
+
+    <div id="rf-params" class="form-subsection hidden">
+      <h3>Random Forest</h3>
+      <div class="grid two">
+        <div>
+          <label for="n_estimators">n_estimators</label>
+          <input type="number" id="n_estimators" name="n_estimators" value="{{ editing_model.hyperparams.get('n_estimators') if editing_model and editing_model.hyperparams else 100 }}">
+        </div>
+        <div>
+          <label for="max_depth">max_depth (optional)</label>
+          <input type="number" id="max_depth" name="max_depth" placeholder="" value="{{ editing_model.hyperparams.get('max_depth') if editing_model and editing_model.hyperparams else '' }}">
+        </div>
+      </div>
+    </div>
+
+    <div id="knn-params" class="form-subsection hidden">
+      <h3>KNN</h3>
+      <div class="grid two">
+        <div>
+          <label for="n_neighbors">n_neighbors</label>
+          <input type="number" id="n_neighbors" name="n_neighbors" value="{{ editing_model.hyperparams.get('n_neighbors') if editing_model and editing_model.hyperparams else 5 }}" min="1">
+        </div>
+      </div>
+    </div>
+
+    <div id="nb-params" class="form-subsection hidden">
+      <h3>Naive Bayes</h3>
+      <p>Uses GaussianNB with default settings.</p>
+    </div>
+
+        <button type="submit">{% if editing_model %}Save Changes{% else %}Register{% endif %}</button>
+      </form>
+    </div>
+
+    
+  <h2>Register Model</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Existing Models</h3>
+      {% if models %}
+        <ul>
+          {% for m in models %}
+            <li style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span>{{ m.name }} ({{ m.type }})</span>
+              <span>
+                <a class="link-btn" href="{{ url_for('register_model', model_id=m.id) }}"><i data-feather="edit"></i> Edit</a>
+                <form method="post" action="{{ url_for('model_delete', model_id=m.id) }}" style="display:inline;" onsubmit="return confirm('Delete this model and its trainings?');">
+                  <button type="submit" class="secondary">Delete</button>
+                </form>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="hint">No models registered yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}
