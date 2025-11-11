@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+  <h2>Preprocessing Wizard</h2>
+  <p class="hint">Analyze the uploaded file, define a binary target, choose encodings and optional scaling, then preview and save.</p>
+
+  <form method="post" class="form" action="{{ url_for('preprocess_wizard', raw_id=raw_id) }}">
+    <div class="form-group">
+      <label for="dataset_name">Dataset Name</label>
+      <input type="text" id="dataset_name" name="dataset_name" value="{{ dataset_name }}" placeholder="e.g., Admission Predict (preprocessed)" />
+    </div>
+
+    <div class="grid two">
+      <div>
+        <h3>Target Column</h3>
+        <label for="target_col">Choose target column</label>
+        <select id="target_col" name="target_col" required>
+          {% for c in columns %}
+            <option value="{{ c }}" {% if chance_col == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+
+        {% if chance_info is not none %}
+          {% if chance_info.is_numeric %}
+            <input type="hidden" name="target_is_numeric" value="1" />
+            <div class="grid two">
+              <div>
+                <div class="hint">Min: {{ '%.4f'|format(chance_info.min) }} | Max: {{ '%.4f'|format(chance_info.max) }}</div>
+                <div class="hint">Mean: {{ '%.4f'|format(chance_info.mean) }} | Median: {{ '%.4f'|format(chance_info.median) }}</div>
+              </div>
+              <div>
+                <label for="chance_threshold">Threshold (≥ maps to +1, &lt; maps to -1)</label>
+                <input type="number" step="any" id="chance_threshold" name="chance_threshold" value="{{ chance_info.suggest_threshold }}" />
+              </div>
+            </div>
+          {% else %}
+            <input type="hidden" name="target_is_numeric" value="0" />
+            <div class="form-group">
+              <label>Map values to classes</label>
+              <div class="grid two">
+                {% for v in chance_info.unique_values %}
+                  <div>
+                    <label>{{ v }}</label>
+                    <select name="map_{{ v }}">
+                      <option value="-1">Class A (-1)</option>
+                      <option value="1">Class B (+1)</option>
+                    </select>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div>
+        <h3>Global Scaling</h3>
+        <p class="hint">Optional normalization applied after encodings.</p>
+        <select name="scaling_method" id="scaling_method">
+          <option value="none">None</option>
+          <option value="standard">StandardScaler</option>
+          <option value="minmax">MinMaxScaler</option>
+          <option value="robust">RobustScaler</option>
+        </select>
+      </div>
+    </div>
+
+    <h3>Feature Selection & Encoding</h3>
+    <p class="hint">Uncheck to drop a column. Choose encoding for text/categorical columns.</p>
+    <div class="grid three">
+      {% for c in columns %}
+        {% set is_target = (chance_col == c) %}
+        <div class="card" style="padding:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="feat_{{ c }}" name="features" value="{{ c }}" {% if c in suggested_features %}checked{% endif %} {% if is_target %}disabled{% endif %} />
+            <label for="feat_{{ c }}" style="margin:0;">{{ c }}</label>
+          </div>
+          <div class="hint">Type: {{ column_types.get(c, 'unknown') }}</div>
+          {% if column_types.get(c) in ['text', 'categorical'] %}
+            <label for="encoding_{{ c }}">Encoding</label>
+            <select id="encoding_{{ c }}" name="encoding_{{ c }}">
+              <option value="none">None (try label)</option>
+              <option value="onehot">One-Hot</option>
+              <option value="label">Label Encoding</option>
+              <option value="tfidf">TF-IDF (text only)</option>
+            </select>
+          {% else %}
+            <div class="hint">Numeric column</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div style="display:flex; gap:8px; align-items:center; margin-top:12px;">
+      <button type="submit" name="action" value="preview">Preview Transformations</button>
+      <button type="submit" name="action" value="confirm" class="secondary">Confirm and Save</button>
+      <a class="link-btn" href="{{ url_for('upload_dataset') }}">Back to Upload</a>
+    </div>
+  </form>
+</section>
+
+{% if preview %}
+<section class="card">
+  <h3>Transformed Dataset Preview</h3>
+  <div class="scroll">
+    <table class="table">
+      <thead>
+        <tr>
+          {% for c in preview.columns %}
+            <th>{{ c }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in preview.rows %}
+          <tr>
+            {% for c in preview.columns %}
+              <td>{{ row[c] }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if process_log %}
+<section class="card">
+  <h3>Processing Log</h3>
+  <div class="grid two">
+    <div>
+      <h4>Column Types</h4>
+      <ul>
+        {% for k, v in process_log.column_types.items() %}
+          <li>{{ k }} → {{ v }}</li>
+        {% endfor %}
+      </ul>
+      <h4>Target</h4>
+      <pre>{{ process_log.target | tojson(indent=2) }}</pre>
+    </div>
+    <div>
+      <h4>Encodings</h4>
+      <pre>{{ process_log.encodings | tojson(indent=2) }}</pre>
+      <h4>Scaling</h4>
+      <code>{{ process_log.scaling or 'none' }}</code>
+      {% if process_log.missing_counts %}
+      <h4>Missing Counts</h4>
+      <ul>
+        {% for k, v in process_log.missing_counts.items() %}
+          <li>{{ k }} → {{ v }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if process_log.feature_columns_out %}
+        <h4>Output Features</h4>
+        <code>{{ process_log.feature_columns_out | join(', ') }}</code>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

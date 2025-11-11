@@ -3,7 +3,8 @@
 A simple, friendly Flask web application to upload datasets, register multiple models (classic ML and a Keras perceptron), train and compare them, and run quick predictions — all in one workspace.
 
 ## Features
-- Dataset management: upload CSVs, map features and target.
+- Dataset management: upload CSVs; preprocessing wizard for target conversion and encoding.
+- Preprocessing Wizard: analyze target, choose encodings and scaling, preview & logs.
 - Model registry: create, edit, delete models with hyperparameters.
 - Supported models: `logistic_regression`, `svm`, `random_forest`, `knn`, `naive_bayes`, and `keras_mlp` (perceptron).
 - Unified Workspace:
@@ -44,7 +45,7 @@ Then open `http://127.0.0.1:5000/` in your browser.
 - `templates/` — HTML templates
   - `workspace.html` — unified training/results/predict page
   - `register_model.html` — model creation/editing UI
-  - `upload.html`, `map_columns.html` — dataset onboarding
+  - `upload.html`, `preprocess_wizard.html` — dataset onboarding and transformation
   - `train.html`, `results.html`, `predict.html` — legacy pages (Workspace supersedes them)
 - `static/js/main.js` — front-end behavior (training workflow, UI helpers)
 - `static/css/style.css` — styles
@@ -55,13 +56,16 @@ Then open `http://127.0.0.1:5000/` in your browser.
 
 ## Usage Guide
 
-### 1) Upload a Dataset
+### 1) Upload & Preprocess a Dataset
 - Go to `Upload`.
 - Select a CSV; upload.
-- After upload, go to `Map Columns` to choose:
-  - `features` — numeric columns used as input
-  - `target` — classification target
-  - Optional `label_map` — if you need to map string labels to ints
+- The Preprocessing Wizard opens to:
+  - Analyze the target (numeric stats or categorical values)
+  - Convert target to binary via threshold or mapping
+  - Identify column types and choose encodings (one-hot, label, TF‑IDF)
+  - Optionally apply scaling (Standard, MinMax, Robust)
+  - Preview the transformed dataset and review a detailed processing log
+- Confirm to save a transformed dataset and preserve an `original_*` copy.
 
 ### 2) Register Models
 - Go to `Register Model`.
@@ -120,6 +124,7 @@ Then open `http://127.0.0.1:5000/` in your browser.
 - Training behavior:
   - Binary classification; targets are mapped to `{0,1}` internally for BCE.
   - Parameters are logged to the console and stored per training.
+  - Honors pre-scaled datasets saved via the Wizard by using an identity scaler.
 
 ## Configuration (`config.json`)
 

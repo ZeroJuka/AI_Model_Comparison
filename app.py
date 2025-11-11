@@ -41,6 +41,42 @@ def ensure_dirs():
     os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
 
+# Simple identity scaler used when datasets are pre-scaled in preprocessing wizard
+class IdentityScaler:
+    def fit(self, X):
+        return self
+
+    def transform(self, X):
+        return X
+
+    def fit_transform(self, X):
+        return X
+
+
+def _normalize_name(s: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def _detect_column_types(df):
+    import pandas as pd
+    types = {}
+    for c in df.columns:
+        series = df[c]
+        if pd.api.types.is_numeric_dtype(series):
+            types[c] = "numeric"
+        elif pd.api.types.is_datetime64_any_dtype(series):
+            types[c] = "datetime"
+        else:
+            # Heuristic: low unique count => categorical; else text
+            uniq = series.dropna().unique()
+            if len(uniq) <= max(20, int(0.05 * len(series))):
+                types[c] = "categorical"
+            else:
+                types[c] = "text"
+    return types
+
+
 def load_config():
     if not os.path.exists(CONFIG_PATH):
         cfg = {"datasets": [], "models": [], "trainings": []}
@@ -164,14 +200,304 @@ def upload_dataset():
         raw_id = str(uuid.uuid4())
         raw_path = os.path.join(DATA_DIR, f"raw_{raw_id}.csv")
         df.to_csv(raw_path, index=False)
-        flash("File uploaded successfully. Please map columns.")
-        # Pass through requested dataset name to mapping for intuitive naming
+        flash("File uploaded successfully. Proceed to preprocessing wizard.")
+        # Pass through requested dataset name to wizard for intuitive naming
         qp = f"?dataset_name={quote_plus(dataset_name)}" if dataset_name else ""
-        return redirect(url_for("map_columns", raw_id=raw_id) + qp)
+        return redirect(url_for("preprocess_wizard", raw_id=raw_id) + qp)
 
     except Exception as e:
         flash(f"Error reading file: {e}")
         return redirect(url_for("upload_dataset"))
+
+
+# Preprocessing Wizard: analyze and transform before final dataset save
+@app.route("/preprocess/<raw_id>", methods=["GET", "POST"])
+def preprocess_wizard(raw_id):
+    ensure_dirs()
+    raw_path = os.path.join(DATA_DIR, f"raw_{raw_id}.csv")
+    if not os.path.exists(raw_path):
+        flash("Uploaded file not found. Please re-upload.")
+        return redirect(url_for("upload_dataset"))
+
+    import pandas as pd
+    import numpy as np
+    from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    import json as _json
+
+    df = pd.read_csv(raw_path)
+    columns = list(df.columns)
+    column_types = _detect_column_types(df)
+
+    # Detect chance column heuristically
+    normalized = {c: _normalize_name(c) for c in columns}
+    chance_col = None
+    for c, n in normalized.items():
+        if "chance" in n or "chanceofadmit" in n:
+            chance_col = c
+            break
+
+    dataset_name = (request.args.get("dataset_name") or request.form.get("dataset_name") or "").strip()
+
+    if request.method == "GET":
+        chance_info = {}
+        if chance_col:
+            if column_types.get(chance_col) == "numeric":
+                series = pd.to_numeric(df[chance_col], errors="coerce")
+                chance_info = {
+                    "is_numeric": True,
+                    "min": float(series.min(skipna=True)),
+                    "max": float(series.max(skipna=True)),
+                    "mean": float(series.mean(skipna=True)),
+                    "median": float(series.median(skipna=True)),
+                    "suggest_threshold": float(np.nanmedian(series)) if not np.isnan(series.median(skipna=True)) else 0.5,
+                }
+            else:
+                uniq = list(pd.Series(df[chance_col]).dropna().unique())
+                chance_info = {
+                    "is_numeric": False,
+                    "unique_values": uniq,
+                }
+
+        # Suggested features: all except detected chance column
+        suggested_features = [c for c in columns if c != chance_col]
+
+        # Sample rows for preview (raw)
+        rows = [ {c: (str(row[c]) if not pd.isna(row[c]) else "") for c in columns} for _, row in df.head(20).iterrows() ]
+
+        return render_template(
+            "preprocess_wizard.html",
+            raw_id=raw_id,
+            columns=columns,
+            column_types=column_types,
+            chance_col=chance_col,
+            chance_info=chance_info,
+            dataset_name=dataset_name,
+            suggested_features=suggested_features,
+            preview=None,
+            process_log=None,
+        )
+
+    # POST: Preview or Confirm transformations
+    action = request.form.get("action")
+    selected_features = request.form.getlist("features")
+    target_col = request.form.get("target_col") or chance_col
+    if not target_col:
+        flash("Please specify a target column (e.g., chance).")
+        return redirect(url_for("preprocess_wizard", raw_id=raw_id))
+
+    is_numeric_flag = request.form.get("target_is_numeric")
+    is_numeric = (is_numeric_flag == "1") if is_numeric_flag is not None else (column_types.get(target_col) == "numeric")
+
+    # Build binary target based on threshold or mapping
+    label_map = {}
+    if is_numeric:
+        try:
+            threshold = float(request.form.get("chance_threshold") or 0.5)
+        except Exception:
+            threshold = 0.5
+        series = pd.to_numeric(df[target_col], errors="coerce").fillna(threshold)
+        y_std = np.where(series >= threshold, 1, -1)
+        label_map = {"<" + str(threshold): -1, ">=" + str(threshold): 1}
+        target_details = {"type": "numeric", "source": target_col, "threshold": threshold}
+    else:
+        # Collect mapping from form: map_value_X => -1/1
+        uniq = list(pd.Series(df[target_col]).dropna().unique())
+        chosen_map = {}
+        for val in uniq:
+            key = f"map_{val}"
+            m = request.form.get(key)
+            if m in ("-1", "1"):
+                chosen_map[val] = int(m)
+        # Fallback: map first unique to -1, rest to 1
+        if not chosen_map:
+            if len(uniq) >= 2:
+                chosen_map = {uniq[0]: -1}
+                for v in uniq[1:]:
+                    chosen_map[v] = 1
+            else:
+                chosen_map = {uniq[0]: 1} if uniq else {}
+        y_std = pd.Series(df[target_col]).map(lambda v: chosen_map.get(v, -1)).fillna(-1).astype(int).values
+        label_map = {str(k): int(v) for k, v in chosen_map.items()}
+        target_details = {"type": "categorical", "source": target_col, "mapping": label_map}
+
+    # Assemble feature matrix with encodings
+    encodings = {}
+    X_trans = pd.DataFrame()
+    working = df.copy()
+    # Handle missing values upfront: numbers -> median, text -> empty string
+    for c in working.columns:
+        if column_types.get(c) == "numeric":
+            try:
+                med = pd.to_numeric(working[c], errors="coerce").median()
+                working[c] = pd.to_numeric(working[c], errors="coerce").fillna(med)
+            except Exception:
+                working[c] = pd.to_numeric(working[c], errors="coerce").fillna(0.0)
+        else:
+            working[c] = working[c].astype(str).fillna("")
+
+    # Use selected features, excluding target
+    feature_cols = [c for c in selected_features if c != target_col]
+    # If no features selected, default to all non-target columns
+    if not feature_cols:
+        feature_cols = [c for c in columns if c != target_col]
+
+    for c in feature_cols:
+        enc = request.form.get(f"encoding_{c}") or "none"
+        encodings[c] = enc
+        if enc == "onehot" and column_types.get(c) in ("categorical", "text"):
+            dummies = pd.get_dummies(working[c], prefix=f"ohe_{c}")
+            X_trans = pd.concat([X_trans, dummies], axis=1)
+        elif enc == "label" and column_types.get(c) in ("categorical", "text"):
+            values = list(pd.Series(working[c]).dropna().unique())
+            map_lbl = {v: i for i, v in enumerate(values)}
+            X_trans[f"le_{c}"] = pd.Series(working[c]).map(lambda v: map_lbl.get(v, 0)).astype(float)
+            encodings[c] = {"method": "label", "map": map_lbl}
+        elif enc == "tfidf" and column_types.get(c) == "text":
+            tfv = TfidfVectorizer(max_features=50)
+            mat = tfv.fit_transform(working[c].astype(str).fillna(""))
+            tf_cols = [f"tfidf_{c}_{i}" for i in range(mat.shape[1])]
+            X_tfidf = pd.DataFrame(mat.toarray(), columns=tf_cols)
+            X_trans = pd.concat([X_trans, X_tfidf], axis=1)
+            encodings[c] = {"method": "tfidf", "vocab_size": int(mat.shape[1])}
+        else:
+            # numeric or no encoding for text/categorical -> attempt numeric cast
+            if column_types.get(c) == "numeric":
+                X_trans[c] = pd.to_numeric(working[c], errors="coerce").fillna(0.0)
+            else:
+                # treat as label with fallback
+                values = list(pd.Series(working[c]).dropna().unique())
+                map_lbl = {v: i for i, v in enumerate(values)}
+                X_trans[f"le_{c}"] = pd.Series(working[c]).map(lambda v: map_lbl.get(v, 0)).astype(float)
+                encodings[c] = {"method": "label", "map": map_lbl}
+
+    # Scaling (global method)
+    scaling_method = (request.form.get("scaling_method") or "none").lower()
+    scaler_applied = None
+    if scaling_method in ("standard", "minmax", "robust"):
+        if scaling_method == "standard":
+            scaler_applied = StandardScaler()
+        elif scaling_method == "minmax":
+            scaler_applied = MinMaxScaler()
+        else:
+            scaler_applied = RobustScaler()
+        X_trans_np = scaler_applied.fit_transform(X_trans.values.astype(float))
+        X_trans = pd.DataFrame(X_trans_np, columns=list(X_trans.columns))
+
+    # Build final transformed dataframe
+    target_name = "target_binary"
+    std_df = X_trans.copy()
+    std_df[target_name] = y_std
+
+    # Validation: ensure all features numeric and no NaNs
+    if std_df.drop(columns=[target_name]).isna().any().any():
+        flash("Invalid or missing values detected after preprocessing. Please adjust transformations.")
+        # Show preview so user can iterate
+        preview_rows = [ {c: (str(row[c]) if not pd.isna(row[c]) else "") for c in std_df.columns} for _, row in std_df.head(20).iterrows() ]
+        process_log = {
+            "column_types": column_types,
+            "target": target_details,
+            "encodings": encodings,
+            "scaling": scaling_method,
+            "notes": ["Detected NaN values post-transform"]
+        }
+        return render_template(
+            "preprocess_wizard.html",
+            raw_id=raw_id,
+            columns=columns,
+            column_types=column_types,
+            chance_col=target_col,
+            chance_info=None,
+            dataset_name=dataset_name,
+            suggested_features=feature_cols,
+            preview={"columns": list(std_df.columns), "rows": preview_rows},
+            process_log=process_log,
+        )
+
+    # Prepare processing log
+    missing_counts = {c: int(X_trans[c].isna().sum()) for c in X_trans.columns}
+    process_log = {
+        "column_types": column_types,
+        "target": target_details,
+        "encodings": encodings,
+        "scaling": scaling_method,
+        "missing_counts": missing_counts,
+        "feature_columns_out": list(X_trans.columns),
+    }
+
+    if action == "preview":
+        preview_rows = [ {c: (str(row[c]) if not pd.isna(row[c]) else "") for c in std_df.columns} for _, row in std_df.head(20).iterrows() ]
+        # Persist temporary log for review
+        tmp_log_path = os.path.join(DATA_DIR, f"process_log_raw_{raw_id}.json")
+        try:
+            with open(tmp_log_path, "w", encoding="utf-8") as lf:
+                _json.dump(process_log, lf, indent=2)
+        except Exception:
+            pass
+        return render_template(
+            "preprocess_wizard.html",
+            raw_id=raw_id,
+            columns=columns,
+            column_types=column_types,
+            chance_col=target_col,
+            chance_info=None,
+            dataset_name=dataset_name,
+            suggested_features=feature_cols,
+            preview={"columns": list(std_df.columns), "rows": preview_rows},
+            process_log=process_log,
+        )
+
+    # Confirm: save dataset and metadata
+    dataset_id = str(uuid.uuid4())
+    dataset_path = os.path.join(DATA_DIR, f"dataset_{dataset_id}.csv")
+    std_df.to_csv(dataset_path, index=False)
+    row_count = int(len(std_df))
+
+    # Preserve original uploaded file alongside transformed dataset
+    import shutil
+    original_copy_path = os.path.join(DATA_DIR, f"original_{dataset_id}.csv")
+    try:
+        shutil.copyfile(raw_path, original_copy_path)
+    except Exception:
+        original_copy_path = None
+
+    # Save log to persistent location tied to dataset_id
+    log_path = os.path.join(DATA_DIR, f"process_log_{dataset_id}.json")
+    try:
+        with open(log_path, "w", encoding="utf-8") as lf:
+            _json.dump(process_log, lf, indent=2)
+    except Exception:
+        log_path = None
+
+    cfg = load_config()
+    cfg.setdefault("datasets", []).append({
+        "id": dataset_id,
+        "name": dataset_name if dataset_name else f"Dataset {dataset_id[:8]}",
+        "path": os.path.relpath(dataset_path, BASE_DIR).replace("\\", "/"),
+        "original_path": (os.path.relpath(original_copy_path, BASE_DIR).replace("\\", "/") if original_copy_path else None),
+        "features": list(X_trans.columns),
+        "target": target_name,
+        "label_map": label_map,
+        "row_count": row_count,
+        "preprocessing": {
+            "scaling": scaling_method if scaling_method != "none" else None,
+            "encodings": encodings,
+            "target": target_details,
+            "column_types": column_types,
+            "process_log_path": (os.path.relpath(log_path, BASE_DIR).replace("\\", "/") if log_path else None)
+        },
+        "created_at": datetime.utcnow().isoformat()
+    })
+    save_config(cfg)
+
+    # Remove temporary raw upload now that original has been preserved
+    try:
+        os.remove(raw_path)
+    except Exception:
+        pass
+
+    flash("Dataset preprocessed, standardized, and saved.")
+    return redirect(url_for("workspace"))
 
 
 @app.route("/map_columns/<raw_id>", methods=["GET", "POST"])
@@ -553,9 +879,17 @@ def workspace():
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    # Honor pre-scaling from preprocessing wizard
+    preproc = ds_meta.get("preprocessing", {}) if ds_meta else {}
+    pre_scaled = bool(preproc.get("scaling"))
+    if pre_scaled:
+        scaler = IdentityScaler()
+        X_train_scaled = X_train
+        X_test_scaled = X_test
+    else:
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
 
     for mid in selected_model_ids:
         model_meta = next((m for m in models if m["id"] == mid), None)
@@ -870,13 +1204,20 @@ def train():
     X = df[ds_meta["features"]].values.astype(float)
     y = df[ds_meta["target"]].values.astype(int)
 
-    # Preprocessing: scaling and split
+    # Preprocessing: scaling and split (honor pre-scaled datasets)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
+    preproc = ds_meta.get("preprocessing", {}) if ds_meta else {}
+    pre_scaled = bool(preproc.get("scaling"))
+    if pre_scaled:
+        scaler = IdentityScaler()
+        X_train_scaled = X_train
+        X_test_scaled = X_test
+    else:
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
 
     results = []
 
@@ -892,7 +1233,9 @@ def train():
                 "scaler": scaler,
                 "feature_columns": ds_meta["features"],
                 "target": ds_meta["target"],
-                "label_map": ds_meta.get("label_map", {})
+                "label_map": ds_meta.get("label_map", {}),
+                "pre_scaled": pre_scaled,
+                "scaling_method": preproc.get("scaling")
             }, pf)
 
         metrics = {}
@@ -1209,9 +1552,17 @@ def _run_training_job(job_id, dataset_id, model_ids, params):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
+        # Honor pre-scaling from preprocessing wizard
+        preproc = ds_meta.get("preprocessing", {}) if ds_meta else {}
+        pre_scaled = bool(preproc.get("scaling"))
+        if pre_scaled:
+            scaler = IdentityScaler()
+            X_train_scaled = X_train
+            X_test_scaled = X_test
+        else:
+            scaler = StandardScaler()
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
 
         for idx, mid in enumerate(model_ids):
             if TRAIN_JOB.get("stop"):
@@ -1233,7 +1584,9 @@ def _run_training_job(job_id, dataset_id, model_ids, params):
                     "scaler": scaler,
                     "feature_columns": ds_meta["features"],
                     "target": ds_meta["target"],
-                    "label_map": ds_meta.get("label_map", {})
+                    "label_map": ds_meta.get("label_map", {}),
+                    "pre_scaled": pre_scaled,
+                    "scaling_method": preproc.get("scaling")
                 }, pf)
 
             metrics = {}
