@@ -235,6 +235,3 @@ Then open `http://127.0.0.1:5000/` in your browser.
 - Keep changes minimal and focused.
 - Follow the existing style; prefer clear names over comments.
 - Don’t commit datasets or training artifacts; `.gitignore` is set accordingly.
-
-## License
-- Not specified. Add one if you plan to share/distribute.
