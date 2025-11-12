@@ -47,6 +47,7 @@ models/preprocess_*.pkl
 models/trained_sklearn_*.pkl
 models/trained_keras_*.weights.h5
 models/history_*.json
+models/*.json
 
 # Keep architecture definitions and directory markers tracked
 !models/architecture_*.json
